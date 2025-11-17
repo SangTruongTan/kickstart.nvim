@@ -952,6 +952,13 @@ require('lazy').setup({
     build = ':TSUpdate',
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
+    -- Add this 'init' function to configure the compiler early
+    init = function()
+        if vim.loop.os_uname().sysname == "Windows_NT" then
+            -- Tell treesitter to use the 'zig' executable for compilation on Windows
+            require('nvim-treesitter.install').compilers = { "zig" }
+        end
+    end,
     opts = {
       ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
       -- Autoinstall languages that are not installed
