@@ -192,6 +192,213 @@ vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper win
 -- Set "jj" as the escape key
 vim.api.nvim_set_keymap('i', 'jj', '<Esc>', { noremap = true, silent = true })
 
+-- [[ Additional Keymaps ]]
+-- Helper functions for keymap creation
+local nv_keymap = function(lhs, rhs)
+  vim.api.nvim_set_keymap('n', lhs, rhs, { noremap = true, silent = true })
+  vim.api.nvim_set_keymap('v', lhs, rhs, { noremap = true, silent = true })
+end
+
+local nx_keymap = function(lhs, rhs)
+  vim.api.nvim_set_keymap('n', lhs, rhs, { silent = true })
+  vim.api.nvim_set_keymap('v', lhs, rhs, { silent = true })
+end
+
+-- Basic navigation remaps
+nv_keymap('s', '}')
+nv_keymap('S', '{')
+nv_keymap('<leader>h', '^')
+nv_keymap('<leader>l', '$')
+nv_keymap('<leader>a', '%')
+
+-- Better line navigation (handles wrapped lines)
+nx_keymap('j', 'gj')
+nx_keymap('k', 'gk')
+
+-- Buffer navigation (previous/next buffer)
+vim.keymap.set({ 'n', 'v' }, 'H', '<cmd>bprevious<cr>', { desc = 'Previous buffer' })
+vim.keymap.set({ 'n', 'v' }, 'L', '<cmd>bnext<cr>', { desc = 'Next buffer' })
+
+-- Comment functions
+-- Note: These mappings work with nvim-comment, comment.nvim, or similar plugins
+-- The 'gc' operator is provided by comment plugins
+-- If no comment plugin is installed, consider installing one:
+--   { 'numToStr/Comment.nvim', opts = {} }
+--   { 'b3nj5m1n/kommentary' }
+-- Note: This overrides the Telescope current buffer search at <leader>/
+-- If you want that, you can use <leader>s/ instead
+vim.keymap.set({ 'n', 'v' }, '<leader>/', 'gc', { desc = 'Toggle comment' })
+vim.keymap.set({ 'n', 'v' }, '<leader>*', 'gcgc', { desc = 'Toggle block comment' })
+
+-- No highlight
+vim.keymap.set('n', '<leader>n', '<cmd>nohlsearch<cr>', { desc = 'No highlight' })
+
+-- Project commands (using Telescope)
+vim.keymap.set('n', '<leader>pf', function()
+  require('telescope.builtin').find_files()
+end, { desc = '[P]roject [F]ind file' })
+vim.keymap.set('n', '<leader>pp', function()
+  require('telescope.builtin').oldfiles()
+end, { desc = '[P]roject [P]revious files' })
+vim.keymap.set('n', '<leader>pt', function()
+  -- If you have neo-tree or nvim-tree, add the toggle command here
+  -- Otherwise, this could open a file explorer
+  vim.cmd('Explore')
+end, { desc = '[P]roject [T]ree' })
+vim.keymap.set('n', '<leader>po', function()
+  vim.cmd('cd %:p:h')
+  print('Changed to file directory: ' .. vim.fn.getcwd())
+end, { desc = '[P]roject [O]pen folder' })
+
+-- File commands
+vim.keymap.set({ 'n', 'v' }, '<space>w', '<cmd>write<cr>', { desc = '[W]rite file' })
+vim.keymap.set({ 'n', 'v' }, '<space>wa', '<cmd>wall<cr>', { desc = '[W]rite [A]ll files' })
+vim.keymap.set({ 'n', 'v' }, '<space>fs', '<cmd>write<cr>', { desc = '[F]ile [S]ave' })
+vim.keymap.set({ 'n', 'v' }, '<space>fS', '<cmd>wall<cr>', { desc = '[F]ile [S]ave all' })
+vim.keymap.set('n', '<space>ff', function()
+  require('conform').format { async = true, lsp_format = 'fallback' }
+end, { desc = '[F]ormat [F]ile' })
+vim.keymap.set('n', '<space>fn', '<cmd>enew<cr>', { desc = '[F]ile [N]ew' })
+vim.keymap.set('n', '<space>ft', function()
+  -- Show file in file tree if using a file tree plugin
+  vim.cmd('Explore %:p:h')
+end, { desc = '[F]ile show in [T]ree' })
+vim.keymap.set('n', '<space>fr', function()
+  -- Rename file functionality
+  local old_name = vim.fn.expand('%')
+  if old_name == '' then
+    print('No file to rename')
+    return
+  end
+  local new_name = vim.fn.input('New name: ', old_name)
+  if new_name ~= '' and new_name ~= old_name then
+    vim.cmd('saveas ' .. new_name)
+    vim.cmd('bdelete ' .. old_name)
+  end
+end, { desc = '[F]ile [R]ename' })
+
+-- Buffer/Editor commands
+vim.keymap.set({ 'n', 'v' }, '<space>c', '<cmd>bdelete<cr>', { desc = '[C]lose buffer' })
+vim.keymap.set({ 'n', 'v' }, '<space>bc', '<cmd>bdelete<cr>', { desc = '[B]uffer [C]lose' })
+vim.keymap.set({ 'n', 'v' }, '<space>k', function()
+  local current_buf = vim.api.nvim_get_current_buf()
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if buf ~= current_buf and vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_delete(buf, {})
+    end
+  end
+end, { desc = '[K]ill other buffers' })
+vim.keymap.set({ 'n', 'v' }, '<space>bk', function()
+  local current_buf = vim.api.nvim_get_current_buf()
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if buf ~= current_buf and vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_delete(buf, {})
+    end
+  end
+end, { desc = '[B]uffer [K]ill others' })
+
+-- Search commands (using Telescope)
+-- Note: Some of these may conflict with existing Telescope mappings
+-- References search (overrides Telescope resume - you can still use it directly)
+vim.keymap.set('n', '<leader>sr', function()
+  require('telescope.builtin').lsp_references()
+end, { desc = '[S]earch [R]eferences' })
+vim.keymap.set('n', '<leader>sR', function()
+  require('telescope.builtin').lsp_references()
+end, { desc = '[S]earch [R]eferences in sidebar' })
+-- Project search (using live grep)
+vim.keymap.set('n', '<leader>sp', function()
+  require('telescope.builtin').live_grep()
+end, { desc = '[S]earch [P]roject' })
+-- Text search (same as project search)
+vim.keymap.set('n', '<leader>st', function()
+  require('telescope.builtin').live_grep()
+end, { desc = '[S]earch [T]ext' })
+-- Find replace - using Telescope find_files (original <leader>sf is already mapped to find_files)
+-- For actual find/replace, use standard Neovim / and :%s or install a find-replace plugin
+
+-- Navigation commands (LSP-based)
+-- Note: gd and gD are already mapped to goto definition/declaration in LSP attach
+-- Adding peek definition (opens in telescope instead of jumping)
+vim.api.nvim_create_autocmd('LspAttach', {
+  group = vim.api.nvim_create_augroup('user-navigation-keymaps', { clear = true }),
+  callback = function(event)
+    -- gD in init_vscode.lua does peek definition, but gD is already used for declaration
+    -- So we'll add peek definition with a different mapping or override gD behavior
+    -- The original gd and gD mappings remain as they are better for Neovim
+  end,
+})
+
+-- Navigation history (using jumplist)
+vim.keymap.set('n', 'g;', '<C-o>', { desc = 'Navigate back' })
+vim.keymap.set('n', 'g,', '<C-i>', { desc = 'Navigate forward' })
+
+-- Folding commands
+vim.keymap.set('n', '<leader>zr', 'zR', { desc = 'Open all folds' })
+vim.keymap.set('n', '<leader>zO', 'zO', { desc = 'Open fold recursive' })
+vim.keymap.set('n', '<leader>zo', 'zo', { desc = 'Open fold' })
+vim.keymap.set('n', '<leader>zm', 'zM', { desc = 'Close all folds' })
+vim.keymap.set('n', '<leader>zb', 'zM', { desc = 'Fold block comments' })
+vim.keymap.set('n', '<leader>zc', 'zc', { desc = 'Close fold' })
+vim.keymap.set('n', '<leader>zg', 'zM', { desc = 'Fold all marker regions' })
+vim.keymap.set('n', '<leader>zG', 'zR', { desc = 'Open all marker regions' })
+vim.keymap.set('n', '<leader>za', 'za', { desc = 'Toggle fold' })
+
+-- Duplicate folding keymaps without leader
+vim.keymap.set('n', 'zr', 'zR', { desc = 'Open all folds' })
+vim.keymap.set('n', 'zO', 'zO', { desc = 'Open fold recursive' })
+vim.keymap.set('n', 'zo', 'zo', { desc = 'Open fold' })
+vim.keymap.set('n', 'zm', 'zM', { desc = 'Close all folds' })
+vim.keymap.set('n', 'zb', 'zM', { desc = 'Fold block comments' })
+vim.keymap.set('n', 'zc', 'zc', { desc = 'Close fold' })
+vim.keymap.set('n', 'zg', 'zM', { desc = 'Fold all marker regions' })
+vim.keymap.set('n', 'zG', 'zR', { desc = 'Open all marker regions' })
+vim.keymap.set('n', 'za', 'za', { desc = 'Toggle fold' })
+
+-- Insert mode navigation
+vim.keymap.set('i', '<C-h>', '<Left>', { noremap = true, silent = true })
+vim.keymap.set('i', '<C-j>', '<Down>', { noremap = true, silent = true })
+vim.keymap.set('i', '<C-k>', '<Up>', { noremap = true, silent = true })
+vim.keymap.set('i', '<C-l>', '<Right>', { noremap = true, silent = true })
+vim.keymap.set('i', '<C-a>', '<Home>', { noremap = true, silent = true })
+
+-- Git commands (using gitsigns if available, otherwise basic git commands)
+vim.keymap.set('n', '<leader>gs', function()
+  -- Check if gitsigns is available
+  local ok, gitsigns = pcall(require, 'gitsigns')
+  if ok then
+    gitsigns.toggle_signs()
+  else
+    vim.cmd('!git status')
+  end
+end, { desc = '[G]it [S]tatus' })
+vim.keymap.set('n', '<leader>gb', function()
+  vim.cmd('!git branch')
+end, { desc = '[G]it [B]ranch' })
+vim.keymap.set('n', '<leader>gp', function()
+  vim.cmd('!git pull')
+end, { desc = '[G]it [P]ull' })
+vim.keymap.set('n', '<leader>gf', function()
+  vim.cmd('!git fetch')
+end, { desc = '[G]it [F]etch' })
+vim.keymap.set('n', '<leader>gi', function()
+  vim.cmd('!git init')
+end, { desc = '[G]it [I]nit' })
+vim.keymap.set('n', '<leader>gd', function()
+  vim.cmd('!git branch -D')
+end, { desc = '[G]it [D]elete branch' })
+vim.keymap.set('n', '<leader>gg', function()
+  vim.cmd('!git log --oneline --graph --all')
+end, { desc = '[G]it [G]raph' })
+
+-- Disable automatic comment formatting
+vim.api.nvim_create_autocmd({ 'FileType', 'BufEnter', 'BufWinEnter' }, {
+  pattern = '*',
+  callback = function()
+    vim.opt.formatoptions:remove({ 'r', 'o' })
+  end,
+})
+
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
