@@ -200,8 +200,8 @@ local nv_keymap = function(lhs, rhs)
 end
 
 local nx_keymap = function(lhs, rhs)
-  vim.api.nvim_set_keymap('n', lhs, rhs, { silent = true })
-  vim.api.nvim_set_keymap('v', lhs, rhs, { silent = true })
+  vim.api.nvim_set_keymap('n', lhs, rhs, { noremap = true, silent = true })
+  vim.api.nvim_set_keymap('v', lhs, rhs, { noremap = true, silent = true })
 end
 
 -- Basic navigation remaps
@@ -495,7 +495,8 @@ require('lazy').setup({
     opts = {
       -- delay between pressing a key and opening which-key (milliseconds)
       -- this setting is independent of vim.opt.timeoutlen
-      delay = 0,
+      -- 0 causes recursion: which-key fires faster than its own 50ms mode-check timer
+      delay = 200,
       icons = {
         -- set icon mappings to true if you have a Nerd Font
         mappings = vim.g.have_nerd_font,
@@ -1155,34 +1156,33 @@ require('lazy').setup({
     end,
   },
   { -- Highlight, edit, and navigate code
+    -- NOTE: nvim-treesitter was fully rewritten for Nvim 0.12+; the old
+    -- `nvim-treesitter.configs` module no longer exists.
     'nvim-treesitter/nvim-treesitter',
+    lazy = false, -- plugin does not support lazy-loading
     build = ':TSUpdate',
-    main = 'nvim-treesitter.configs', -- Sets main module to use for opts
-    -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
-    -- Add this 'init' function to configure the compiler early
-    init = function()
-        if vim.loop.os_uname().sysname == "Windows_NT" then
-            -- Tell treesitter to use the 'zig' executable for compilation on Windows
-            require('nvim-treesitter.install').compilers = { "zig" }
-        end
+    config = function()
+      -- Pre-install common parsers (async, no-op if already present)
+      require('nvim-treesitter').install({
+        'bash', 'c', 'diff', 'html', 'lua', 'luadoc',
+        'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc',
+      })
+
+      -- Enable treesitter highlighting + auto-install for every filetype.
+      -- Ruby keeps vim-regex highlighting for correct indent behaviour.
+      vim.api.nvim_create_autocmd('FileType', {
+        callback = function(ev)
+          if ev.match == 'ruby' then return end
+          local lang = vim.treesitter.language.get_lang(ev.match) or ev.match
+          -- auto-install missing parsers silently
+          require('nvim-treesitter').install({ lang })
+          pcall(vim.treesitter.start)
+        end,
+      })
     end,
-    opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
-      -- Autoinstall languages that are not installed
-      auto_install = true,
-      highlight = {
-        enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
-    },
     -- There are additional nvim-treesitter modules that you can use to interact
     -- with nvim-treesitter. You should go explore a few and see what interests you:
     --
-    --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
